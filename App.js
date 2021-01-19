@@ -9,45 +9,39 @@ import {
   StatusBar,
 } from 'react-native';
 
-const App: () => React$Node = () => {
+const App = () => {
   const [turn, setTurn] = useState(1);
-  const [gameState, setGameState] = useState({});
   const [winner, setWinner] = useState(null);
-  const [newGame, setNewGame] = useState(false);
+  const [gameArray, setGameArray] = useState(Array(9).fill(''));
 
   const wins = [
-    [1, 2, 3],
+    [0, 1, 2],
+    [0, 3, 6],
+    [0, 4, 8],
     [1, 4, 7],
-    [1, 5, 9],
     [2, 5, 8],
-    [3, 6, 9],
-    [4, 5, 6],
-    [7, 8, 9],
-    [3, 5, 7],
+    [3, 4, 5],
+    [6, 7, 8],
+    [2, 4, 6],
   ];
 
   const checkForThree = (combo, mark) => {
     let result = true;
     combo.forEach((square) => {
-      if (gameState[square] !== mark) {
+      if (gameArray[square] !== mark) {
         result = false;
       }
     });
     return result;
   };
 
-  const startGame = () => {
-    console.log(gameState);
-    setNewGame(false);
-  };
-
   const resetGame = () => {
-    setGameState({});
-    setNewGame(true);
+    setGameArray(Array(9).fill(''));
+    setWinner(null);
+    setTurn(1);
   };
 
   const checkForWinner = (grid, mark) => {
-    gameState[grid] = mark;
     wins.forEach((combo) => {
       if (checkForThree(combo, mark)) {
         setWinner(turn);
@@ -55,11 +49,15 @@ const App: () => React$Node = () => {
     });
   };
 
-  const togglePlayer = (grid, mark) => {
-    setNewGame(false);
-    checkForWinner(grid, mark);
-    setGameState({...gameState, [grid]: mark});
-    setTurn(turn === 1 ? 2 : 1);
+  const markSquare = (grid) => {
+    if (!winner) {
+      if (!gameArray[grid]) {
+        const mark = turn === 1 ? 'X' : 'O';
+        gameArray[grid] = mark;
+        checkForWinner(grid, mark);
+        setTurn(turn === 1 ? 2 : 1);
+      }
+    }
   };
 
   return (
@@ -68,84 +66,30 @@ const App: () => React$Node = () => {
       <SafeAreaView style={styles.parentContainer}>
         <Button title="New Game" onPress={() => resetGame()} />
 
-        <Text style={styles.playerText}>{`Player ${turn}'s turn!`}</Text>
-        <View style={styles.gridContainer}>
-          <View style={styles.row}>
-            <Square
-              toggle={togglePlayer}
-              newGame={newGame}
-              startGame={startGame}
-              turn={turn}
-              grid={1}
-            />
-            <Square
-              toggle={togglePlayer}
-              newGame={newGame}
-              startGame={startGame}
-              turn={turn}
-              grid={2}
-            />
-            <Square
-              toggle={togglePlayer}
-              newGame={newGame}
-              startGame={startGame}
-              turn={turn}
-              grid={3}
-            />
-          </View>
-          <View style={styles.row}>
-            <Square
-              toggle={togglePlayer}
-              newGame={newGame}
-              startGame={startGame}
-              turn={turn}
-              grid={4}
-            />
-            <Square
-              toggle={togglePlayer}
-              newGame={newGame}
-              startGame={startGame}
-              turn={turn}
-              grid={5}
-            />
-            <Square
-              toggle={togglePlayer}
-              newGame={newGame}
-              startGame={startGame}
-              turn={turn}
-              grid={6}
-            />
-          </View>
-          <View style={styles.row}>
-            <Square
-              toggle={togglePlayer}
-              newGame={newGame}
-              startGame={startGame}
-              turn={turn}
-              grid={7}
-            />
-            <Square
-              toggle={togglePlayer}
-              newGame={newGame}
-              startGame={startGame}
-              turn={turn}
-              grid={8}
-            />
-            <Square
-              toggle={togglePlayer}
-              newGame={newGame}
-              startGame={startGame}
-              turn={turn}
-              grid={9}
-            />
-          </View>
-        </View>
-        {winner ? (
+        {!winner ? (
+          <Text style={styles.playerText}>{`Player ${turn}'s turn!`}</Text>
+        ) : (
           <Text
             style={styles.winnerText}>{`Player ${winner} is the winner!`}</Text>
-        ) : (
-          <Text style={styles.winnerText} />
         )}
+
+        <View style={styles.gridContainer}>
+          <View style={styles.row}>
+            <Square markSquare={markSquare} grid={0} mark={gameArray[0]} />
+            <Square markSquare={markSquare} grid={1} mark={gameArray[1]} />
+            <Square markSquare={markSquare} grid={2} mark={gameArray[2]} />
+          </View>
+          <View style={styles.row}>
+            <Square markSquare={markSquare} grid={3} mark={gameArray[3]} />
+            <Square markSquare={markSquare} grid={4} mark={gameArray[4]} />
+            <Square markSquare={markSquare} grid={5} mark={gameArray[5]} />
+          </View>
+          <View style={styles.row}>
+            <Square markSquare={markSquare} grid={6} mark={gameArray[6]} />
+            <Square markSquare={markSquare} grid={7} mark={gameArray[7]} />
+            <Square markSquare={markSquare} grid={8} mark={gameArray[8]} />
+          </View>
+        </View>
       </SafeAreaView>
     </>
   );
@@ -166,7 +110,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   winnerText: {
-    marginTop: 10,
+    color: 'green',
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
   row: {
     flexDirection: 'row',
