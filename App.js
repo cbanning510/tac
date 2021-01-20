@@ -1,20 +1,46 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import Square from './components/Square';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   SafeAreaView,
   Button,
+  Modal,
   StyleSheet,
   View,
   Text,
+  TextInput,
   StatusBar,
+  TouchableHighlight,
 } from 'react-native';
 
 const App = () => {
   const [turn, setTurn] = useState(1);
+  const [wins, setWins] = useState([]);
   const [winner, setWinner] = useState(null);
+  // const [player1, setPlayer1] = useState('player1');
+  // const [player2, setPlayer2] = useState('player2');
   const [gameArray, setGameArray] = useState(Array(9).fill(''));
+  const [modalVisible, setModalVisible] = useState(false);
+  const [player1, onChangePlayerOneText] = React.useState('');
+  const [player2, onChangePlayerTwoText] = React.useState('');
 
-  const wins = [
+  useEffect(() => {
+    async function getWins() {
+      try {
+        const value = await AsyncStorage.getItem('wins');
+        if (!isEmpty(value)) {
+          let data = JSON.parse(value);
+          setWins(data);
+          resetGame();
+        }
+      } catch (error) {
+        console.log('error getting AsyncStorage data ', error);
+      }
+    }
+    getWins();
+  }, []);
+
+  const winningCombos = [
     [0, 1, 2],
     [0, 3, 6],
     [0, 4, 8],
@@ -25,7 +51,11 @@ const App = () => {
     [2, 4, 6],
   ];
 
-  const checkForThree = (combo, mark) => {
+  function isEmpty(obj) {
+    return !obj || Object.keys(obj).length === 0;
+  }
+
+  const checkForThreeInRow = (combo, mark) => {
     let result = true;
     combo.forEach((square) => {
       if (gameArray[square] !== mark) {
@@ -36,20 +66,67 @@ const App = () => {
   };
 
   const resetGame = () => {
+    onChangePlayerOneText('');
+    onChangePlayerTwoText('');
+    setModalVisible(true);
     setGameArray(Array(9).fill(''));
     setWinner(null);
     setTurn(1);
   };
 
+  const getPlayer = () => {
+    return turn === 1 ? player1 : player2;
+  };
+
+  const getWinnerMoves = (player) => {
+    const mark = player === 1 ? 'X' : 'O';
+    return gameArray.reduce((prev, curr) => {
+      return (prev += curr === mark ? 1 : 0);
+    }, 0);
+  };
+
+  const storeData = async (value) => {
+    try {
+      const jsonValue = JSON.stringify(value);
+      await AsyncStorage.setItem('wins', jsonValue);
+    } catch (e) {
+      console.log('error ERROR!!!!!! ', e);
+    }
+  };
+
+  // const getData = async () => {
+  //   try {
+  //     const value = await AsyncStorage.getItem('@storage_Key');
+  //     if (value !== null) {
+  //       // value previously stored
+  //     }
+  //   } catch (e) {
+  //     // error reading value
+  //   }
+  // };
+
+  const storeWinner = () => {
+    const moves = getWinnerMoves(turn);
+    const user = getPlayer();
+    if (isEmpty(wins)) {
+      setWins([{user: user, moves: moves}]);
+    } else {
+      setWins([...wins, {user: user, moves: moves}]);
+    }
+    storeData([...wins, {user: user, moves: moves}]);
+  };
+
   const checkForWinner = (grid, mark) => {
-    wins.forEach((combo) => {
-      if (checkForThree(combo, mark)) {
+    winningCombos.forEach((combo) => {
+      if (checkForThreeInRow(combo, mark)) {
         setWinner(turn);
+        storeWinner();
       }
     });
   };
 
   const markSquare = (grid) => {
+    console.log('wins: ', wins);
     if (!winner) {
       if (!gameArray[grid]) {
         const mark = turn === 1 ? 'X' : 'O';
@@ -65,12 +142,70 @@ const App = () => {
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.parentContainer}>
         <Button title="New Game" onPress={() => resetGame()} />
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => {
+            Alert.alert('Modal has been closed.');
+          }}>
+          <View style={styles.centeredView}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalText}>Player 1 initials:</Text>
+              <TextInput
+                // eslint-disable-next-line react-native/no-inline-styles
+                style={{
+                  height: 40,
+                  width: 50,
+                  border: 'gray',
+                  borderWidth: 1,
+                  padding: 4,
+                  marginBottom: 10,
+                }}
+                onChangeText={(text) =>
+                  onChangePlayerOneText(text.toUpperCase())
+                }
+                value={player1}
+                maxLength={2}
+                textAlign={'center'}
+              />
+              <Text style={styles.modalText}>Player 2 initials:</Text>
+              <TextInput
+                // eslint-disable-next-line react-native/no-inline-styles
+                style={{
+                  height: 40,
+                  width: 50,
+                  border: 'gray',
+                  borderWidth: 1,
+                  padding: 4,
+                  marginBottom: 10,
+                }}
+                onChangeText={(text) =>
+                  onChangePlayerTwoText(text.toUpperCase())
+                }
+                value={player2}
+                maxLength={2}
+                textAlign={'center'}
+              />
+              <TouchableHighlight
+                style={{...styles.openButton, backgroundColor: '#2196F3'}}
+                onPress={() => {
+                  setModalVisible(!modalVisible);
+                }}>
+                <Text style={styles.textStyle}>OK</Text>
+              </TouchableHighlight>
+            </View>
+          </View>
+        </Modal>
 
         {!winner ? (
-          <Text style={styles.playerText}>{`Player ${turn}'s turn!`}</Text>
+          <Text style={styles.playerText}>{`${
+            turn === 1 ? player1 : player2
+          }'s turn!`}</Text>
         ) : (
-          <Text
-            style={styles.winnerText}>{`Player ${winner} is the winner!`}</Text>
+          <Text style={styles.winnerText}>{`${
+            winner === 1 ? player1 : player2
+          } is the winner!`}</Text>
         )}
 
         <View style={styles.gridContainer}>
@@ -116,6 +251,44 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+  },
+
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  modalView: {
+    margin: 2,
+    backgroundColor: 'white',
+    borderRadius: 5,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  openButton: {
+    backgroundColor: '#F194FF',
+    borderRadius: 2,
+    padding: 10,
+    elevation: 2,
+    marginTop: 10,
+  },
+  textStyle: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  modalText: {
+    marginBottom: 6,
+    textAlign: 'center',
   },
 });
 
